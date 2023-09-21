@@ -7,10 +7,6 @@
     var _defaultLimbo = {};
 
     // ******************  Visibility and State Functions ****************** //
-    var _pageNotesEnabled = true;
-    $axure.messageCenter.addMessageListener(function (message, data) {
-        if(message == 'annotationToggle') _pageNotesEnabled = data;
-    });
 
     var _isIdVisible = $ax.visibility.IsIdVisible = function(id) {
         return $ax.visibility.IsVisible(window.document.getElementById(id));
@@ -39,13 +35,11 @@
 
     $ax.visibility.SetVisible = function (element, visible) {
         //not setting display to none to optimize measuring
-        if (visible) {
-            var jElement = $(element);
-            if(jElement.hasClass(HIDDEN_CLASS)) jElement.removeClass(HIDDEN_CLASS);
-            if(jElement.hasClass(UNPLACED_CLASS)) jElement.removeClass(UNPLACED_CLASS);
+        if(visible) {
+            if($(element).hasClass(HIDDEN_CLASS)) $(element).removeClass(HIDDEN_CLASS);
+            if($(element).hasClass(UNPLACED_CLASS)) $(element).removeClass(UNPLACED_CLASS);
             element.style.display = '';
             element.style.visibility = 'inherit';
-            if(jElement.hasClass(SELECTED_ClASS)) $ax.style.SetWidgetSelected(element.id, true);
         } else {
             element.style.display = 'none';
             element.style.visibility = 'hidden';
@@ -95,7 +89,7 @@
                     if(mouseOveredElement && !mouseOveredElement.is(":visible")) {
                         var axObj = $obj($ax.event.mouseOverObjectId);
 
-                        if(($ax.public.fn.IsDynamicPanel(axObj.type) || $ax.public.fn.IsLayer(axObj.type) || $ax.public.fn.IsRepeater(axObj.type)) && axObj.propagate) {
+                        if(($ax.public.fn.IsDynamicPanel(axObj.type) || $ax.public.fn.IsLayer(axObj.type)) && axObj.propagate) {
                             mouseOveredElement.trigger('mouseleave');
                         } else mouseOveredElement.trigger('mouseleave.ixStyle');
                     }
@@ -109,12 +103,7 @@
 
         //set the visibility of the annotation box as well if it exists
         var ann = document.getElementById(elementId + "_ann");
-        if(ann) {
-            _visibility.SetVisible(ann, options.value);
-            var jAnn = $("#" + elementId + "_ann");
-            if(_pageNotesEnabled) jAnn.show();
-            else jAnn.hide();
-        }
+        if(ann) _visibility.SetVisible(ann, options.value);
 
         //set ref visibility for ref of flow shape, if that exists
         var ref = document.getElementById(elementId + '_ref');
@@ -372,7 +361,7 @@
             }
         } else if (options.easing == 'flip') {
             //this container will hold 
-            var trapScroll = _trapScrollLoc(parentId);
+            var trapScroll = _trapScrollLoc(childId);
             var innerContainer = $('<div></div>');
             innerContainer.attr('id', containerId + "_inner");
             innerContainer.data('flip', options.direction == 'left' || options.direction == 'right' ? 'y' : 'x');
@@ -416,7 +405,7 @@
                 }
 
                 var onFlipShowComplete = function() {
-                    var trapScroll = _trapScrollLoc(parentId);
+                    var trapScroll = _trapScrollLoc(childId);
                     $ax.visibility.SetIdVisible(childId, true);
 
                     wrapped.insertBefore(innerContainer);
@@ -466,7 +455,7 @@
                 }
 
                 var onFlipHideComplete = function() {
-                    var trapScroll = _trapScrollLoc(parentId);
+                    var trapScroll = _trapScrollLoc(childId);
                     wrapped.insertBefore(innerContainer);
                     $ax.visibility.SetIdVisible(childId, false);
 
@@ -591,16 +580,6 @@
             if(children[i].style && $ax.visibility.IsVisible(children[i])) return children[i].id;
         }
         return '';
-    };
-
-    $ax.visibility.GetCurrentPanelDiagram = function (id) {
-        var obj = $obj(id);
-        if ($ax.public.fn.IsDynamicPanel(obj.type) && obj.diagrams && obj.diagrams.length > 0) {
-            var stateId = $ax.visibility.GetPanelState(id);
-            var stateLabel = $jobj(stateId).data('label');
-            return obj.diagrams.find(x => x.label === stateLabel);
-        }
-        return null;
     };
 
     var containerCount = {};
@@ -908,12 +887,7 @@
         trapScroll();
     };
 
-    var _trapScrollLoc = function (id) {
-        var jWindow = $(window);
-        var windowLoc = {
-            x: jWindow.scrollLeft(),
-            y: jWindow.scrollTop()
-        }
+    var _trapScrollLoc = function(id) {
         var locs = {};
         var states = $jobj(id).find('.panel_state');
         for(var i = 0; i < states.length; i++) {
@@ -926,8 +900,6 @@
                 state.scrollLeft(locs[key].x);
                 state.scrollTop(locs[key].y);
             }
-            jWindow.scrollLeft(windowLoc.x);
-            jWindow.scrollTop(windowLoc.y);
         };
     }
 
@@ -1244,7 +1216,6 @@
     var _movedIds = _visibility.movedIds = {};
     var _resizedIds = _visibility.resizedIds = {};
     var _rotatedIds = _visibility.rotatedIds = {};
-    var _resizingIds = _visibility.resizingIds = {};
 
     $ax.visibility.getMovedLocation = function(scriptId) {
         return _movedIds[scriptId];
@@ -1289,18 +1260,6 @@
         _resizedIds[scriptId] = { width: width, height: height };
     };
 
-    $ax.visibility.getResizingRect = function (scriptId) {
-        return _resizingIds[scriptId];
-    }
-
-    $ax.visibility.setResizingRect = function (scriptId, offsetBoundingRect) {
-        _resizingIds[scriptId] = offsetBoundingRect;
-    }
-
-    $ax.visibility.clearResizingRects = function () {
-        _resizingIds = _visibility.resizingIds = {};
-    }
-
     $ax.visibility.getRotatedAngle = function (scriptId) {
         return _rotatedIds[scriptId];
     };
@@ -1313,7 +1272,6 @@
         _movedIds = _visibility.movedIds = {};
         _resizedIds = _visibility.resizedIds = {};
         _rotatedIds = _visibility.rotatedIds = {};
-        _resizingIds = _visibility.resizingIds = {};
     };
 
     $ax.visibility.clearMovedAndResizedIds = function (elementIds) {
@@ -1322,7 +1280,6 @@
             delete _movedIds[id];
             delete _resizedIds[id];
             delete _rotatedIds[id];
-            delete _resizingIds[id];
         }
     };
 
@@ -1354,6 +1311,5 @@
 
     var HIDDEN_CLASS = _visibility.HIDDEN_CLASS = 'ax_default_hidden';
     var UNPLACED_CLASS = _visibility.UNPLACED_CLASS = 'ax_default_unplaced';
-    var SELECTED_ClASS = 'selected';
 
 });
